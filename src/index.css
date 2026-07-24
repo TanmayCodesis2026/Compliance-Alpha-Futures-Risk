@@ -1,0 +1,87 @@
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+:root {
+  --bg:#F7F7F8; --surface:#FFFFFF; --surface-2:#FAFAFA; --inset:#F4F4F5;
+  --border:#E4E4E7; --border-strong:#D4D4D8; --hair:#F0F0F1;
+  --text:#09090B; --text-2:#52525B; --text-3:#71717A;
+  --accent:#18181B; --accent-fg:#FAFAFA; --accent-soft:#F4F4F5; --accent-line:#E4E4E7;
+  --info:#2563EB; --info-soft:#EFF4FE;
+  --crit:#DC2626; --crit-soft:#FCECEC;
+  --high:#EA580C; --high-soft:#FBF0E6;
+  --med:#CA8A04; --med-soft:#FAF3DA;
+  --ok:#16A34A; --ok-soft:#E7F6ED;
+  --ring:rgba(24,24,27,.16);
+  --shadow:0 1px 2px 0 rgba(0,0,0,.05);
+  --shadow-lg:0 8px 28px rgba(0,0,0,.10);
+}
+[data-theme="dark"] {
+  --bg:#09090B; --surface:#131316; --surface-2:#171719; --inset:#27272A;
+  --border:#27272A; --border-strong:#3F3F46; --hair:#1F1F23;
+  --text:#FAFAFA; --text-2:#A1A1AA; --text-3:#8B8B93;
+  --accent:#FAFAFA; --accent-fg:#18181B; --accent-soft:#27272A; --accent-line:#3F3F46;
+  --info:#60A5FA; --info-soft:#172033;
+  --crit:#F87171; --crit-soft:#2A1416;
+  --high:#FB923C; --high-soft:#2A1B0E;
+  --med:#FBBF24; --med-soft:#241D0C;
+  --ok:#4ADE80; --ok-soft:#0E2A1C;
+  --ring:rgba(250,250,250,.22);
+  --shadow:0 1px 2px 0 rgba(0,0,0,.35);
+  --shadow-lg:0 10px 34px rgba(0,0,0,.5);
+}
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.82)} }
+@keyframes growbar { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+
+::-webkit-scrollbar { width:11px; height:11px; }
+::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:8px; border:3px solid var(--surface); }
+::-webkit-scrollbar-track { background:transparent; }
+
+input::placeholder, textarea::placeholder { color:var(--text-3); }
+textarea:focus { border-color:var(--text-3) !important; box-shadow:0 0 0 3px var(--ring); }
+
+/* hover styles that were inline style-hover="" in the original template */
+.nav-btn:hover { background:var(--inset) !important; }
+.theme-btn:hover { border-color:var(--border-strong) !important; }
+.accent-btn:hover { filter:brightness(1.07); }
+.run-btn:hover { filter:brightness(1.1); }
+.row-hover:hover { background:var(--surface-2); }
+.expand-hover:hover { color:var(--text) !important; background:var(--inset) !important; }
+.ghost-btn:hover { background:var(--inset) !important; }
+.cal-cell:hover { border-color:var(--border-strong) !important; }
+
+/* skeleton loading placeholder */
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+.skeleton {
+  border-radius:5px;
+  background:linear-gradient(90deg, var(--inset) 25%, var(--hair) 37%, var(--inset) 63%);
+  background-size:200% 100%;
+  animation:shimmer 1.3s ease-in-out infinite;
+}
+
+/* ---- responsive grid helpers (override inline grid-template-columns) ----
+   Inline styles can't carry media queries, so grids that must collapse use a
+   class; the rules below win via specificity + !important over the inline value. */
+
+/* KPI strips: 5 cols -> 3 (tablet) -> 2 (phone) */
+.grid-kpis { display:grid; }
+@media (max-width:1100px){ .grid-kpis{ grid-template-columns:repeat(3,1fr) !important; } }
+@media (max-width:640px){ .grid-kpis{ grid-template-columns:repeat(2,1fr) !important; } }
+
+/* main two-column page layout -> single column on tablet/phone */
+@media (max-width:1024px){ .grid-main{ grid-template-columns:1fr !important; } }
+
+/* generic 2-up tiles -> 1-up on phone */
+@media (max-width:640px){ .grid-2up{ grid-template-columns:1fr !important; } }
+
+/* 3-up tiles -> 2-up phone */
+@media (max-width:640px){ .grid-3up{ grid-template-columns:repeat(2,1fr) !important; } }
+
+/* 4-up tiles -> 2-up tablet/phone */
+@media (max-width:768px){ .grid-4up{ grid-template-columns:repeat(2,1fr) !important; } }
+
+/* tighten the generous desktop section padding on phones so content isn't cramped.
+   The screens all use <section style="padding:24px 30px 46px"> — trim the sides. */
+@media (max-width:768px){
+  main > section { padding-left:14px !important; padding-right:14px !important; }
+}
