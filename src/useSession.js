@@ -13,6 +13,7 @@ import {
 //      when it can't recover, dropping us back to Login.
 export function useSession() {
   const [idToken, setIdToken] = useState(getToken)
+  // token
 
   const signIn = useCallback((data, remember) => {
     const token = saveTokenData(data, { remember })
