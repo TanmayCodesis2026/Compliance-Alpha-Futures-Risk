@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+const baseURL = import.meta.env.VITE_BASE_URL;
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -12,7 +12,7 @@ export default function Login({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e?.preventDefault(); // keep the SPA from doing a full-page form post
-    const URL = 'https://backend.alphacapitalgroup.uk/adm/email/signin/'
+    const URL = `${baseURL}adm/email/signin/`
 
     try {
       setLoading(true);

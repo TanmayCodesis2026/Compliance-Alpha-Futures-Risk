@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { getToken, isTokenExpired, refreshToken } from '../auth.js'
+import { authJson, SessionExpiredError } from '../auth.js'
+const baseURL = import.meta.env.VITE_BASE_URL;
 
-const API_URL = 'https://backend.alphacapitalgroup.uk/admin/compliance/duplicates/all/'
+const API_URL = `${baseURL}admin/compliance/duplicates/all/`
 
 // matched_fields[].field arrives lowercase — these are NOT the *_FLAG keys on
 // the parent entry's `flags` object.
@@ -70,62 +71,28 @@ function Compliance() {
 
   const toggleRow = (rowKey) => setExpanded((s) => ({ ...s, [rowKey]: !s[rowKey] }))
 
+  // authJson() handles the bearer token, the pre-emptive refresh and the single
+  // 401 retry. A SessionExpiredError means useSession has already dropped the
+  // app back to Login, so this screen is unmounting either way.
   useEffect(() => {
     let alive = true
 
-    const load = async (accessToken, { retried = false } = {}) => {
-      const response = await fetch(API_URL, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      })
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => '')
-        console.error('Compliance fetch failed', response.status, response.statusText, text)
-
-        // One refresh attempt only — `retried` stops a 401-refresh-401 loop.
-        if ((response.status === 401 || response.status === 403) && !retried) {
-          const fresh = await refreshToken()
-          if (fresh && alive) return load(fresh, { retried: true })
-        }
-
-        if (alive) {
-          setErrorMessage('Unable to load compliance matches from the API.')
-          setIsLoading(false)
-        }
-        return
-      }
-
-      const data = await response.json()
-      if (!alive) return
-      setComplianceData(data)
-      setErrorMessage('')
-      setIsLoading(false)
-    }
-
-    const token = getToken()
-    if (!token || isTokenExpired()) {
-      // App gates this screen behind Login, so a missing/expired token here means
-      // the session lapsed while the tab was open.
-      refreshToken().then((fresh) => {
+    authJson(API_URL)
+      .then((data) => {
         if (!alive) return
-        if (!fresh) {
-          setErrorMessage('Your session has expired. Please sign in again.')
-          setIsLoading(false)
-          return
-        }
-        load(fresh).catch((err) => {
-          if (alive) { setErrorMessage(err?.message || 'Unable to load compliance matches.'); setIsLoading(false) }
-        })
+        setComplianceData(data)
+        setErrorMessage('')
+        setIsLoading(false)
       })
-    } else {
-      load(token).catch((err) => {
-        if (alive) { setErrorMessage(err?.message || 'Unable to load compliance matches.'); setIsLoading(false) }
+      .catch((err) => {
+        if (!alive) return
+        setErrorMessage(
+          err instanceof SessionExpiredError
+            ? err.message
+            : err?.message || 'Unable to load compliance matches from the API.'
+        )
+        setIsLoading(false)
       })
-    }
 
     return () => { alive = false }
   }, [])

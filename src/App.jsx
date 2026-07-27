@@ -5,7 +5,7 @@ import {
 } from './data.js'
 import { fetchFlags, fetchFlagDetail } from './api.js'
 import { useIsMobile } from './useMediaQuery.js'
-import { getToken, saveTokenData, clearTokens } from './auth.js'
+import { useSession } from './useSession.js'
 import Compliance1 from './screens/Compliance1.jsx'
 import Compliance from './screens/Compliance.jsx'
 import Login from './components/Login.jsx'
@@ -17,8 +17,8 @@ export default function App() {
   const [theme, setTheme] = useState('dark')
   const [screen, setScreen] = useState('compliance')
   // Login is the launch screen: no token -> nothing but <Login/> renders.
-  // "Remember me" decides localStorage (survives the tab) vs sessionStorage.
-  const [idToken, setIdToken] = useState(getToken)
+  // useSession keeps the token refreshed and clears it when the session dies.
+  const { idToken, signIn, signOut } = useSession()
   const [search, setSearch] = useState('')
   const [sev, setSev] = useState({ critical: true, high: true, medium: true })
   const [type, setType] = useState({ 'RT-1': true, 'RT-2': true, 'GT-1': true, 'GT-2': true })
@@ -107,14 +107,12 @@ export default function App() {
 
   // ---- auth ----
   const handleLogin = (data, remember) => {
-    const token = saveTokenData(data, { remember })
-    setIdToken(token)
+    signIn(data, remember)
     go('compliance')
   }
 
   const handleLogout = () => {
-    clearTokens()
-    setIdToken('')
+    signOut()
     setScreen('compliance') // where we land on the next successful sign-in
   }
 
