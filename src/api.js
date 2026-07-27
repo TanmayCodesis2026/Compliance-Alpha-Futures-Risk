@@ -15,19 +15,19 @@ async function get(path, params) {
       if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v)
     }
   }
-  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
-  if (!res.ok) {
-    let detail = ''
-    try { detail = (await res.json()).detail || '' } catch { /* ignore */ }
-    throw new Error(detail || `Request failed: ${res.status} ${res.statusText}`)
-  }
-  return res.json()
+  // const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+  // if (!res.ok) {
+  //   let detail = ''
+  //   try { detail = (await res.json()).detail || '' } catch { /* ignore */ }
+  //   throw new Error(detail || `Request failed: ${res.status} ${res.statusText}`)
+  // }
+  // return res.json()
 }
 
 // GET /api/overview/
-export function fetchOverview() {
-  return get('/api/overview/')
-}
+// export function fetchOverview() {
+//   return get('/api/overview/')
+// }
 
 // GET /api/flags/ — paginated, filterable. One request per page (server-side
 // pagination). opts: { severity, flag_type, source, search, user_id, account_name,

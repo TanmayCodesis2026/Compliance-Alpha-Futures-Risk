@@ -3,9 +3,12 @@ import {
   sevMeta, sevKey, fixMojibake, decorateFlag, detailLegs, detailGraph, detailSignals, typeHeadings,
   overviewTrendBars, decorateOverview,
 } from './data.js'
-import { fetchOverview, fetchFlags, fetchFlagDetail } from './api.js'
+import { fetchFlags, fetchFlagDetail } from './api.js'
 import { useIsMobile } from './useMediaQuery.js'
-import Comnpliance from './screens/Compliance.jsx'
+import { getToken, saveTokenData, clearTokens } from './auth.js'
+import Compliance1 from './screens/Compliance1.jsx'
+import Compliance from './screens/Compliance.jsx'
+import Login from './components/Login.jsx'
 // import RunHistory from './screens/RunHistory.jsx' // parked until the runs API exists
 
 export default function App() {
@@ -13,6 +16,9 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [theme, setTheme] = useState('dark')
   const [screen, setScreen] = useState('compliance')
+  // Login is the launch screen: no token -> nothing but <Login/> renders.
+  // "Remember me" decides localStorage (survives the tab) vs sessionStorage.
+  const [idToken, setIdToken] = useState(getToken)
   const [search, setSearch] = useState('')
   const [sev, setSev] = useState({ critical: true, high: true, medium: true })
   const [type, setType] = useState({ 'RT-1': true, 'RT-2': true, 'GT-1': true, 'GT-2': true })
@@ -93,19 +99,29 @@ export default function App() {
     news: () => go('news'),
     gambling: () => go('gambling'),
     events: () => go('events'),
+    compliance1: () => go('compliance1'),
     compliance: () => go('compliance'),
     logs: () => go('logs'),
     history: () => go('history'),
   }
 
-  // ---- fetch overview once ----
-  useEffect(() => {
-    let alive = true
-    fetchOverview()
-      .then((d) => { if (alive) { setOverview(d); setOverviewErr(null) } })
-      .catch((e) => { if (alive) setOverviewErr(e.message) })
-    return () => { alive = false }
-  }, [])
+  // ---- auth ----
+  const handleLogin = (data, remember) => {
+    const token = saveTokenData(data, { remember })
+    setIdToken(token)
+    go('compliance')
+  }
+
+  const handleLogout = () => {
+    clearTokens()
+    setIdToken('')
+    setScreen('compliance') // where we land on the next successful sign-in
+  }
+
+  // ---- overview fetch parked: fetchOverview() is commented out in api.js ----
+  // When it comes back, restore the effect keyed on [idToken] so it fires once
+  // the session exists rather than on mount. `overview` stays null meanwhile,
+  // which the derived values below already tolerate.
 
   // ---- fetch flags when on queue screen or filters/search change ----
   // The API takes a single value per param. We push the narrowest server filter
@@ -272,6 +288,16 @@ export default function App() {
   const themeLabel = theme === 'light' ? 'Dark' : 'Light'
   const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))
 
+  // ---- login gate: first thing rendered on launch, no app chrome around it ----
+  // Placed after every hook above so hook order stays identical across renders.
+  if (!idToken) {
+    return (
+      <div data-theme={theme} style={{ fontFamily: "'Geist',system-ui,-apple-system,sans-serif", fontSize: 13, lineHeight: 1.45, letterSpacing: '-0.005em', WebkitFontSmoothing: 'antialiased' }}>
+        <Login onLogin={handleLogin} />
+      </div>
+    )
+  }
+
   return (
     <div data-theme={theme} style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'Geist',system-ui,-apple-system,sans-serif", fontSize: 13, lineHeight: 1.45, letterSpacing: '-0.005em', WebkitFontSmoothing: 'antialiased' }}>
 
@@ -335,8 +361,11 @@ export default function App() {
           </button> */}
 
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-3)', padding: '16px 10px 6px', textTransform: 'uppercase' }}>Reference</div>
-          <button className="nav-btn" onClick={navGo.compliance} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', border: 'none', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontWeight: 500, textAlign: 'left', background: navStyles.events.bg, color: navStyles.events.fg }}>
-            Compliance
+          {/* <button className="nav-btn" onClick={navGo.compliance1} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', border: 'none', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontWeight: 500, textAlign: 'left', background: screen === 'compliance1' ? 'var(--accent-soft)' : 'transparent', color: screen === 'compliance1' ? 'var(--accent)' : 'var(--text-2)' }}>
+            Old Compliance
+          </button> */}
+          <button className="nav-btn" onClick={navGo.compliance} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', border: 'none', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontWeight: 500, textAlign: 'left', background: screen === 'compliance' ? 'var(--accent-soft)' : 'transparent', color: screen === 'compliance' ? 'var(--accent)' : 'var(--text-2)' }}>
+            Compliance 
           </button>
           {/* <button className="nav-btn" onClick={navGo.events} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', border: 'none', borderRadius: 8, cursor: 'pointer', font: 'inherit', fontWeight: 500, textAlign: 'left', background: navStyles.events.bg, color: navStyles.events.fg }}>
             News Events
@@ -357,6 +386,9 @@ export default function App() {
             <div style={{ fontWeight: 600, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Alpha Admin</div>
             <div style={{ fontSize: 11, color: 'var(--text-3)' }}>Compliance Team</div>
           </div>
+          <button onClick={handleLogout} title="Sign out" style={{ flex: 'none', padding: '5px 9px', border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontSize: 11, color: 'var(--text-2)' }}>
+            Sign out
+          </button>
         </div>
       </aside>
 
@@ -411,7 +443,8 @@ export default function App() {
         {screen === 'hft' && <Hft initialAccount={modelAccount} />}
         {screen === 'news' && <NewsTrading onAccountClick={openAccount} initialAccount={modelAccount} />}
         {screen === 'gambling' && <Gambling onAccountClick={openAccount} initialAccount={modelAccount} />}
-        {screen === 'compliance' && <Comnpliance/>}
+        {screen === 'compliance1' && <Compliance1/>}
+        {screen === 'compliance' && <Compliance/>}
         {screen === 'events' && <NewsEvents />}
         {screen === 'logs' && <Logs />}
         {screen === 'history' && (
