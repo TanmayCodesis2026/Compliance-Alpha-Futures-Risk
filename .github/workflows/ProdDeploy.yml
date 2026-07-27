@@ -1,0 +1,38 @@
+# Name of workflow as seen in Github actions tab
+name: Deploy to Prod Server
+# Run workflow only on push to dev branch
+on:
+  push:
+    branches:
+      - main
+jobs:
+  # To build the project
+  build:
+    runs-on: codesis-github-runner
+    steps:
+      - name: Checking out code
+        uses: actions/checkout@v4
+      - name: Installing Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # cache the dependencies to speed up the build
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Installing dependencies
+        run: npm i --force
+      - name: Building project
+        run: CI=false npm run build
+      - name: Deploy to Ubuntu Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "build/"  
+          target: "/home/deploy/compliance" 
