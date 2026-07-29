@@ -76,8 +76,17 @@ export default function Login({ onLogin }) {
               color: "var(--text)",
             }}
           >
-            Compliance Portal
+            Alpha Capital
           </h1>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: 20,
+              color: "var(--text)",
+            }}
+          >
+            Compliance Portal
+          </h2>
 
           <p
             style={{

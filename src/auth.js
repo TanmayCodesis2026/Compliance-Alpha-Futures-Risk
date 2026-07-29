@@ -19,6 +19,7 @@ const SKEW_MS = 60 * 1000
 
 // The store holding the current session. localStorage wins because clearTokens()
 // guarantees the other one is empty.
+const Token = localStorage.getItem('idToken')
 function activeStore() {
   return localStorage.getItem('idToken') ? localStorage : sessionStorage
 }
@@ -102,7 +103,7 @@ async function requestRefresh() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${refreshValue}`,
+      Authorization: `Bearer ${Token}`,
     },
     credentials: 'include',
   }).catch((err) => {

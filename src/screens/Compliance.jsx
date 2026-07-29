@@ -68,6 +68,8 @@ function Compliance() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [expanded, setExpanded] = useState({}) // rowKey -> open
+  const [query, setQuery] = useState('')
+  const [searchFocused, setSearchFocused] = useState(false)
 
   const toggleRow = (rowKey) => setExpanded((s) => ({ ...s, [rowKey]: !s[rowKey] }))
 
@@ -98,7 +100,25 @@ function Compliance() {
   }, [])
 
   const users = useMemo(() => normalizeUsers(complianceData), [complianceData])
-  const rows = useMemo(() => flattenPairs(users), [users])
+  const allRows = useMemo(() => flattenPairs(users), [users])
+
+  // ---- search: matches either side of the pair, so typing one account name
+  // surfaces every row that account appears in. Email/ID are included because
+  // full_name is frequently blank on partially-onboarded accounts.
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return allRows
+    return allRows.filter((row) =>
+      [
+        row.subject?.full_name, row.subject?.email, row.subject?.id,
+        row.counterparty?.full_name, row.counterparty?.email, row.counterparty?.id,
+      ]
+        .filter((v) => v !== null && v !== undefined)
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    )
+  }, [allRows, query])
 
   // ---- pagination (client-side: the endpoint is /all/ and returns everything) ----
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize))
@@ -108,6 +128,8 @@ function Compliance() {
 
   const goPage = (n) => setPage(Math.min(Math.max(1, n), totalPages))
   const changePageSize = (n) => { setPageSize(n); setPage(1) }
+  // A new query re-slices the result set, so page 1 is the only sane landing spot.
+  const changeQuery = (value) => { setQuery(value); setPage(1) }
 
   return (
     <section style={{ padding: 26, flex: 1 }}>
@@ -116,6 +138,46 @@ function Compliance() {
         <div style={{ marginTop: 6, color: 'var(--text-2)' }}>
           Duplicate-account matches across surname, address, IP, CID, wallet and card.
         </div>
+      </div>
+      {/* toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 9,
+            flex: '1 1 260px', maxWidth: 380,
+            background: 'var(--inset)',
+            border: `1px solid ${searchFocused ? 'var(--accent)' : 'var(--border)'}`,
+            boxShadow: searchFocused ? '0 0 0 3px var(--accent-soft)' : 'none',
+            borderRadius: 10, padding: '9px 12px',
+            transition: 'border-color .15s ease, box-shadow .15s ease',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 15 15" fill="none" style={{ flex: 'none' }}><circle cx="6.3" cy="6.3" r="4.6" stroke="var(--text-3)" strokeWidth="1.5" /><line x1="9.7" y1="9.7" x2="13.5" y2="13.5" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          <input
+            value={query}
+            onChange={(e) => changeQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="Search account — name, email or ID…"
+            aria-label="Search accounts by name, email or ID"
+            style={{ border: 'none', background: 'transparent', outline: 'none', font: 'inherit', fontSize: 13, color: 'var(--text)', width: '100%', padding: 0 }}
+          />
+          {query && (
+            <button
+              onClick={() => changeQuery('')}
+              aria-label="Clear search"
+              style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, border: 0, borderRadius: 999, background: 'var(--border)', color: 'var(--text-2)', font: 'inherit', fontSize: 12, lineHeight: 1, cursor: 'pointer', padding: 0 }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {query && (
+          <div style={{ color: 'var(--text-3)', fontSize: 12 }}>
+            {rows.length} of {allRows.length} match{allRows.length === 1 ? '' : 'es'}
+          </div>
+        )}
       </div>
 
       {isLoading && (
@@ -148,7 +210,7 @@ function Compliance() {
                 {pageRows.length === 0 && (
                   <tr>
                     <td style={{ ...td, color: 'var(--text-3)', textAlign: 'center', padding: 26 }} colSpan={5}>
-                      No duplicate-account matches found.
+                      {query ? `No accounts matching “${query.trim()}”.` : 'No duplicate-account matches found.'}
                     </td>
                   </tr>
                 )}

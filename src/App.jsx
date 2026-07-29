@@ -313,8 +313,8 @@ export default function App() {
             <div style={{ width: 13, height: 13, border: '2.5px solid var(--accent-fg)', borderRadius: '50%', borderRightColor: 'transparent', transform: 'rotate(-45deg)' }} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 13.5, letterSpacing: '-0.01em', lineHeight: 1.1 }}>Risk tool</div>
-            <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'Geist Mono',monospace", letterSpacing: 0 }}>Alpha</div>
+            <div style={{ fontWeight: 700, fontSize: 13.5, letterSpacing: '-0.01em', lineHeight: 1.1 }}>Compliance tool</div>
+            <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: "'Geist Mono',monospace", letterSpacing: 0 }}>Alpha Capital</div>
           </div>
         </div>
 
