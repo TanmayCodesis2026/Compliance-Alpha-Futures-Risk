@@ -12,6 +12,11 @@ body { margin: 0; }
   --high:#EA580C; --high-soft:#FBF0E6;
   --med:#CA8A04; --med-soft:#FAF3DA;
   --ok:#16A34A; --ok-soft:#E7F6ED;
+  /* date-range selection band. --info-soft is tuned as a callout fill behind
+     coloured text and is far too pale to read as a band on --surface, so the
+     range gets its own tint: --info at low alpha, which composites visibly on
+     both the popover surface and the muted preset rail. */
+  --range-band:rgba(37,99,235,.17);
   --ring:rgba(24,24,27,.16);
   --shadow:0 1px 2px 0 rgba(0,0,0,.05);
   --shadow-lg:0 8px 28px rgba(0,0,0,.10);
@@ -27,6 +32,7 @@ body { margin: 0; }
   --high:#FB923C; --high-soft:#2A1B0E;
   --med:#FBBF24; --med-soft:#241D0C;
   --ok:#4ADE80; --ok-soft:#0E2A1C;
+  --range-band:rgba(96,165,250,.26);
   --ring:rgba(250,250,250,.22);
   --shadow:0 1px 2px 0 rgba(0,0,0,.35);
   --shadow-lg:0 10px 34px rgba(0,0,0,.5);
