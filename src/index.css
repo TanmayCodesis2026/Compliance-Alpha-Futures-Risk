@@ -2,6 +2,7 @@
 body { margin: 0; }
 
 :root {
+  color-scheme: light;
   --bg:#F7F7F8; --surface:#FFFFFF; --surface-2:#FAFAFA; --inset:#F4F4F5;
   --border:#E4E4E7; --border-strong:#D4D4D8; --hair:#F0F0F1;
   --text:#09090B; --text-2:#52525B; --text-3:#71717A;
@@ -16,6 +17,7 @@ body { margin: 0; }
   --shadow-lg:0 8px 28px rgba(0,0,0,.10);
 }
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg:#09090B; --surface:#131316; --surface-2:#171719; --inset:#27272A;
   --border:#27272A; --border-strong:#3F3F46; --hair:#1F1F23;
   --text:#FAFAFA; --text-2:#A1A1AA; --text-3:#8B8B93;
@@ -38,6 +40,9 @@ body { margin: 0; }
 ::-webkit-scrollbar-track { background:transparent; }
 
 input::placeholder, textarea::placeholder { color:var(--text-3); }
+input[type="date"] { font-family:'Geist Mono',monospace; }
+input[type="date"]::-webkit-calendar-picker-indicator { opacity:.5; cursor:pointer; padding:0; margin-left:2px; }
+input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity:.95; }
 textarea:focus { border-color:var(--text-3) !important; box-shadow:0 0 0 3px var(--ring); }
 
 /* hover styles that were inline style-hover="" in the original template */
@@ -49,6 +54,7 @@ textarea:focus { border-color:var(--text-3) !important; box-shadow:0 0 0 3px var
 .expand-hover:hover { color:var(--text) !important; background:var(--inset) !important; }
 .ghost-btn:hover { background:var(--inset) !important; }
 .cal-cell:hover { border-color:var(--border-strong) !important; }
+.cal-cell-hover:hover { background:var(--inset) !important; color:var(--text) !important; opacity:1 !important; }
 
 /* skeleton loading placeholder */
 @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
@@ -57,6 +63,34 @@ textarea:focus { border-color:var(--text-3) !important; box-shadow:0 0 0 3px var
   background:linear-gradient(90deg, var(--inset) 25%, var(--hair) 37%, var(--inset) 63%);
   background-size:200% 100%;
   animation:shimmer 1.3s ease-in-out infinite;
+}
+
+/* ---- loading affordances (see components/Loaders.jsx) ----
+   A skeleton stands in for content that isn't there yet; a spinner or the
+   indeterminate rail annotate content that IS on screen while it refreshes. */
+@keyframes spin { to { transform:rotate(360deg) } }
+.spinner {
+  border-style:solid;
+  border-radius:999px;
+  animation:spin .7s linear infinite;
+}
+
+/* Indeterminate rail: a short segment sweeping the full width — used when the
+   response size is unknown, which is every request this app makes. */
+@keyframes rail { 0%{left:-38%} 100%{left:100%} }
+.rail-track { position:relative; overflow:hidden; background:var(--hair); }
+.rail-track::after {
+  content:''; position:absolute; top:0; bottom:0; width:38%;
+  background:linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity:.55;
+  animation:rail 1.1s cubic-bezier(.4,0,.2,1) infinite;
+}
+
+/* Motion-sensitive users still need the loading signal, just not the movement. */
+@media (prefers-reduced-motion:reduce) {
+  .skeleton { animation:none; background:var(--inset); }
+  .spinner { animation-duration:2.4s; }
+  .rail-track::after { animation:none; left:0; width:100%; opacity:.3; }
 }
 
 /* ---- responsive grid helpers (override inline grid-template-columns) ----
