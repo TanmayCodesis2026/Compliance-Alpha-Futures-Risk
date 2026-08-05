@@ -400,10 +400,10 @@ export default function App() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
             </button>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 380, background: 'var(--inset)', border: '1px solid var(--border)', borderRadius: 9, padding: '7px 11px' }}>
+          {/* <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 380, background: 'var(--inset)', border: '1px solid var(--border)', borderRadius: 9, padding: '7px 11px' }}>
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ flex: 'none' }}><circle cx="6.3" cy="6.3" r="4.6" stroke="var(--text-3)" strokeWidth="1.5" /><line x1="9.7" y1="9.7" x2="13.5" y2="13.5" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" /></svg>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search flag IDs…" style={{ border: 'none', background: 'transparent', outline: 'none', font: 'inherit', color: 'var(--text)', width: '100%' }} />
-          </div>
+          </div> */}
           <div style={{ flex: 1 }} />
           <div style={{ display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-2)', padding: '4px 11px', border: '1px solid var(--border)', borderRadius: 6 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ok)', animation: 'pulse 1.8s ease-in-out infinite', flex: 'none' }} />
