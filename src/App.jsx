@@ -308,7 +308,7 @@ export default function App() {
       <aside style={isMobile
         ? { width: 264, flex: 'none', borderRight: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, height: '100vh', overflowY: 'auto', zIndex: 50, transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform .22s ease', boxShadow: drawerOpen ? 'var(--shadow-lg)' : 'none' }
         : { width: 248, flex: 'none', borderRight: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' }}>
-        <div style={{ padding: '20px 18px 16px', display: 'flex', alignItems: 'center', gap: 11, borderBottom: '1px solid var(--hair)' }}>
+        <div style={{ padding: '12px 18px 12px', display: 'flex', alignItems: 'center', gap: 11, borderBottom: '1px solid var(--hair)' }}>
           <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
             <div style={{ width: 13, height: 13, border: '2.5px solid var(--accent-fg)', borderRadius: '50%', borderRightColor: 'transparent', transform: 'rotate(-45deg)' }} />
           </div>
