@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { authJson, SessionExpiredError } from '../auth.js'
 import DateRangePicker from '../components/DateRangePicker.jsx'
 import { InlineLoading, LoadingBar, SkeletonBar, Spinner } from '../components/Loaders.jsx'
@@ -48,7 +48,14 @@ const EMPTY_FILTERS = { search: '', evidence: 'all', from: '', to: '' }
 // Typing shouldn't fire a request per keystroke; tabs and dates apply at once.
 const SEARCH_DEBOUNCE_MS = 350
 
-const buildQuery = ({ search, evidence, from, to }) => {
+// Filtering and paging both happen server-side — this is the only place toolbar
+// and pager state becomes a request:
+//   fields=cid                       one evidence flag
+//   date=2026-08-05                  a single day
+//   date_from=…&date_to=…            a range
+//   search=nrehman_88%40hotmail.com  account name, email or ID
+//   page=1&page_size=10              always sent, alongside whatever filters apply
+const buildQuery = ({ search, evidence, from, to }, page, pageSize) => {
   const params = new URLSearchParams()
   const term = search.trim()
 
@@ -61,8 +68,9 @@ const buildQuery = ({ search, evidence, from, to }) => {
     if (to) params.set('date_to', to)
   }
 
-  const qs = params.toString()
-  return qs ? `?${qs}` : ''
+  params.set('page', String(page))
+  params.set('page_size', String(pageSize))
+  return `?${params.toString()}`
 }
 
 // The payload is either a bare array or wrapped — same shapes Compliance.jsx handles.
@@ -73,6 +81,22 @@ const normalizeUsers = (payload) => {
   if (payload && Array.isArray(payload.data)) return payload.data
   return []
 }
+
+// Unpaginated total, under whichever name the envelope uses. Null means the
+// backend didn't send one, which is the difference between knowing the last page
+// number and only knowing whether another page exists.
+const TOTAL_KEYS = ['count', 'total', 'total_count', 'num_results']
+const pickTotal = (payload) => {
+  if (!payload || Array.isArray(payload)) return null
+  for (const key of TOTAL_KEYS) {
+    const value = Number(payload[key])
+    if (Number.isFinite(value)) return value
+  }
+  return null
+}
+
+// A `next` link is the other way a paginated envelope says "there's more".
+const hasNextLink = (payload) => Boolean(payload && !Array.isArray(payload) && (payload.next || payload.next_page))
 
 // One row per flagged pair. The API nests `matches` under each user, so a user
 // with 3 counterparties becomes 3 rows — otherwise "match count" has no subject.
@@ -213,22 +237,21 @@ function Compliance() {
 
   const toggleRow = (rowKey) => setExpanded((s) => ({ ...s, [rowKey]: !s[rowKey] }))
 
-  const queryString = useMemo(() => buildQuery(filters), [filters])
+  const queryString = useMemo(() => buildQuery(filters, page, pageSize), [filters, page, pageSize])
   const isFetching = result.query !== queryString
   const isFirstLoad = isFetching && result.data === null
   const errorMessage = isFetching ? '' : result.error
-
-  const applyFilters = (next) => {
-    setFilters(next)
+  const applyOnly = useCallback((next) => {
+    setFilters({ ...EMPTY_FILTERS, ...next })
     setPage(1)
     setExpanded({})
-  }
+  }, [])
 
   useEffect(() => {
     if (searchInput === filters.search) return
-    const timer = setTimeout(() => applyFilters((f) => ({ ...f, search: searchInput })), SEARCH_DEBOUNCE_MS)
+    const timer = setTimeout(() => applyOnly({ search: searchInput }), SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [searchInput, filters.search])
+  }, [searchInput, filters.search, applyOnly])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -250,24 +273,48 @@ function Compliance() {
   }, [queryString])
 
   const users = useMemo(() => normalizeUsers(result.data), [result.data])
-  const rows = useMemo(() => flattenPairs(users), [users])
+  const allRows = useMemo(() => flattenPairs(users), [users])
 
   const hasFilters = Boolean(searchInput || filters.evidence !== 'all' || filters.from || filters.to)
   // The search box gets its own spinner: it's the one control whose effect is
   // delayed (debounce), so without it a keystroke looks like it did nothing.
   const isSearching = searchInput !== filters.search || (isFetching && Boolean(filters.search))
 
-  // ---- pagination (client-side: the endpoint is /all/ and returns everything) ----
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize))
-  const safePage = Math.min(page, totalPages) // clamp on render instead of resetting in an effect
-  const start = (safePage - 1) * pageSize
-  const pageRows = rows.slice(start, start + pageSize)
+  // ---- pagination ----------------------------------------------------------
+  // `page` and `page_size` ride on every request, but a response can still carry
+  // more rows than a page holds — the endpoint is /all/, and one entry flattens
+  // into a row per counterparty — so the page is cut here too. Whatever the
+  // filters match, the table shows `pageSize` rows and no more.
+  //
+  // Which side owns the page numbers depends on what came back:
+  //   `count` in the envelope  -> the server paged; the slice is just a cap
+  //   only a `next` link       -> the server paged, last page unknown
+  //   neither                  -> unpaginated; the client cuts every page
+  const total = pickTotal(result.data)
+  const serverPaged = total !== null || hasNextLink(result.data)
+  const pageCount = total !== null
+    ? Math.max(1, Math.ceil(total / pageSize))
+    : serverPaged ? null : Math.max(1, Math.ceil(allRows.length / pageSize))
 
-  const goPage = (n) => setPage(Math.min(Math.max(1, n), totalPages))
-  const changePageSize = (n) => { setPageSize(n); setPage(1) }
+  const safePage = pageCount === null ? page : Math.min(page, pageCount)
+  const start = serverPaged ? 0 : (safePage - 1) * pageSize
+  const rows = allRows.slice(start, start + pageSize)
+
+  const canPrev = safePage > 1
+  const canNext = pageCount === null ? hasNextLink(result.data) : safePage < pageCount
+
+  // Paging swaps the whole body, and row keys are positional, so expansions go.
+  const goPage = (n) => {
+    const next = pageCount === null ? Math.max(1, n) : Math.min(Math.max(1, n), pageCount)
+    if (next === safePage) return
+    setPage(next)
+    setExpanded({})
+  }
+  const changePageSize = (n) => { setPageSize(n); setPage(1); setExpanded({}) }
   // Both bounds move together — the picker never emits a half-applied range.
-  const setDateRange = (from, to) => applyFilters((f) => ({ ...f, from, to }))
-  const clearFilters = () => { setSearchInput(''); applyFilters(EMPTY_FILTERS) }
+  const setDateRange = (from, to) => { setSearchInput(''); applyOnly({ from, to }) }
+  const setEvidence = (evidence) => { setSearchInput(''); applyOnly({ evidence }) }
+  const clearFilters = () => { setSearchInput(''); applyOnly({}) }
 
   return (
     <section style={{ padding: 26, flex: 1 }}>
@@ -306,7 +353,7 @@ function Compliance() {
           ariaLabel="Filter by matched field"
           options={EVIDENCE_OPTIONS}
           value={filters.evidence}
-          onChange={(v) => applyFilters((f) => ({ ...f, evidence: v }))}
+          onChange={setEvidence}
         />
 
         {/* One pill for the whole range: relative presets (last 1/3/6 months,
@@ -331,7 +378,11 @@ function Compliance() {
         <div style={{ display: 'flex', alignItems: 'center', minHeight: 18, color: 'var(--text-3)', fontSize: 12 }}>
           {isFetching
             ? <InlineLoading>{isFirstLoad ? 'Loading matches…' : 'Updating results…'}</InlineLoading>
-            : hasFilters ? `${rows.length} match${rows.length === 1 ? '' : 'es'}` : ''}
+            : hasFilters
+              ? total === null
+                ? `${rows.length} on this page`
+                : `${total} result${total === 1 ? '' : 's'}`
+              : ''}
         </div>
       </div>
 
@@ -366,9 +417,9 @@ function Compliance() {
               </thead>
 
               <tbody>
-                {isFirstLoad && <SkeletonRows count={SKELETON_ROWS} />}
+                {isFirstLoad && <SkeletonRows count={Math.min(pageSize, SKELETON_ROWS)} />}
 
-                {!isFirstLoad && pageRows.length === 0 && (
+                {!isFirstLoad && rows.length === 0 && (
                   <tr>
                     <td style={{ ...td, color: 'var(--text-3)', textAlign: 'center', padding: 26 }} colSpan={5}>
                       {hasFilters ? 'No matches for the current filters.' : 'No duplicate-account matches found.'}
@@ -376,7 +427,7 @@ function Compliance() {
                   </tr>
                 )}
 
-                {pageRows.map((row, index) => {
+                {rows.map((row, index) => {
                   const rowKey = `${row.subject?.id ?? 'x'}-${row.counterparty?.id ?? 'y'}-${start + index}`
                   const isOpen = !!expanded[rowKey]
 
@@ -473,9 +524,12 @@ function Compliance() {
           ) : (
           <div style={pagerShell}>
             <div style={{ color: 'var(--text-2)', fontSize: 12 }}>
+              {/* Three different numbers, because they are three different things:
+                  the rows on screen, the pairs the fetched accounts came to, and
+                  the backend's total. */}
               {rows.length === 0
                 ? 'No rows'
-                : `Showing ${start + 1}–${Math.min(start + pageSize, rows.length)} of ${rows.length}`}
+                : `Showing ${start + 1}–${start + rows.length} of ${allRows.length} pair${allRows.length === 1 ? '' : 's'} from ${users.length} account${users.length === 1 ? '' : 's'}${total === null ? '' : ` · ${total} total`}`}
             </div>
 
             <div style={{ flex: 1 }} />
@@ -492,13 +546,17 @@ function Compliance() {
             </label>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button onClick={() => goPage(1)} disabled={safePage === 1} style={pagerBtn(safePage === 1)}>« First</button>
-              <button onClick={() => goPage(safePage - 1)} disabled={safePage === 1} style={pagerBtn(safePage === 1)}>‹ Prev</button>
+              <button onClick={() => goPage(1)} disabled={!canPrev} style={pagerBtn(!canPrev)}>« First</button>
+              <button onClick={() => goPage(page - 1)} disabled={!canPrev} style={pagerBtn(!canPrev)}>‹ Prev</button>
               <span style={{ color: 'var(--text-2)', fontSize: 12, padding: '0 4px', fontFamily: "'Geist Mono',monospace" }}>
-                {safePage} / {totalPages}
+                {page}{pageCount === null ? '' : ` / ${pageCount}`}
               </span>
-              <button onClick={() => goPage(safePage + 1)} disabled={safePage === totalPages} style={pagerBtn(safePage === totalPages)}>Next ›</button>
-              <button onClick={() => goPage(totalPages)} disabled={safePage === totalPages} style={pagerBtn(safePage === totalPages)}>Last »</button>
+              <button onClick={() => goPage(page + 1)} disabled={!canNext} style={pagerBtn(!canNext)}>Next ›</button>
+              {/* Jumping to the last page needs a total; without one, there's no
+                  last page number to jump to. */}
+              {pageCount !== null && (
+                <button onClick={() => goPage(pageCount)} disabled={!canNext} style={pagerBtn(!canNext)}>Last »</button>
+              )}
             </div>
           </div>
           )}
