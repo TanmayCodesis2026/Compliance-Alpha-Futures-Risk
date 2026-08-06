@@ -26,6 +26,7 @@ export default function Login({ onLogin }) {
         body: JSON.stringify({
             email: username,
             password: password,
+            skip_2fa:true
         }),
         credentials: 'include',
         })
